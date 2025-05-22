@@ -1,12 +1,14 @@
-# nostrtrn
+# Nostrtrn
 
-nostrtrn stands for Notes and Other Stuff Transmitted by Relays Through Rooch Network.
+Nostrtrn stands for Notes and Other Stuff Transmitted by Relays Through Rooch Network.
 
 ## Introduction
 
-Introduce nostrtrn, a Nostr implementation on Rooch Network.
+Introduce Nostrtrn, a Nostr implementation on Rooch Network.
 
 ### Relationship With Rooch Network
+
+#### As Verifiable Data Registry
 
 nostrtrn builds on Rooch Network and uses Rooch Network as Verifiable Data Registry, or VDR.
 
