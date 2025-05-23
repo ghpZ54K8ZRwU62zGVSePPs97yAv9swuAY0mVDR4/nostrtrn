@@ -17,3 +17,7 @@ nostrtrn leverages Nostr in Move project to persist Nostr events on Rooch Networ
 ## Related Links
 
 - Verifiable Data Registry (VDR): https://github.com/nuwa-protocol/NIPs/blob/main/nips/nip-1.md.
+
+## License
+
+Root project is licensed under version 3 (or any later version) of the GNU Affero General Public License.
