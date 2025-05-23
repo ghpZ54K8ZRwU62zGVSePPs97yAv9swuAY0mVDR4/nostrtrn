@@ -10,9 +10,9 @@ Introduce Nostrtrn, a Nostr implementation on Rooch Network.
 
 #### As Verifiable Data Registry
 
-nostrtrn builds on Rooch Network and uses Rooch Network as Verifiable Data Registry, or VDR.
+Nostrtrn builds on Rooch Network and uses Rooch Network as Verifiable Data Registry, or VDR.
 
-nostrtrn leverages Nostr in Move project to persist Nostr events on Rooch Network as verifiable data source, and communicates with external registered Nostr relays via a service discovery and registry mechanism on Rooch Network.
+Nostrtrn leverages Nostr in Move project to persist Nostr events on Rooch Network as verifiable data source, and communicates with external registered Nostr relays via a service discovery and registry mechanism on Rooch Network.
 
 ## Related Links
 
@@ -20,4 +20,4 @@ nostrtrn leverages Nostr in Move project to persist Nostr events on Rooch Networ
 
 ## License
 
-Root project is licensed under version 3 (or any later version) of the GNU Affero General Public License.
+Root project of Nostrtrn is licensed under version 3 (or any later version) of the GNU Affero General Public License.
