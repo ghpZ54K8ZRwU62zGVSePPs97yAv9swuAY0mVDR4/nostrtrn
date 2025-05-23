@@ -1,20 +1,25 @@
-# nip
+# Nip
 
 NIP stands for Nostr Implementation Possibilities.
 
+## Protocol Implementation
+
+- [x] NIP-01
+- [ ] NIP-10
+
 ## License
 
-This work is dual-licensed under version 3 (or any later version) of the GNU Affero General Public License and Apache License, Version 2.0.
+This work, under `move/nip`, of nostrtrn, is dual-licensed under version 3 (or any later version) of the GNU Affero General Public License and Apache License, Version 2.0.
 
 Both licenses should be complied.
 
 One may obtain a copy of the Apache License, Version 2.0 from this URL:
 
-https://github.com/rooch-network/rooch/blob/main/LICENSE
+https://github.com/rooch-network/rooch/blob/main/LICENSE.
 
 One may obtain a copy of the version 3 (or any later version) of the GNU Affero General Public License from the root of this project:
 
-[LICENSE](../LICENSE)
+[LICENSE](../../LICENSE).
 
 When deriviate works from this repository, add below licensings of the SPDX license identifier:
 

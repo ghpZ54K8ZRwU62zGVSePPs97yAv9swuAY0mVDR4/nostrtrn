@@ -28,9 +28,6 @@ module nip::event {
     // Kind of the event
     const EVENT_KIND_USER_METADATA: u16 = 0;
 
-    // Signature field of the event
-    const SIG: vector<u8> = b"sig";
-
     // Error codes starting from 1000
     const ErrorMalformedId: u64 = 1000;
     const ErrorSignatureValidationFailure: u64 = 1001;
@@ -39,6 +36,12 @@ module nip::event {
     const ErrorMalformedSignature: u64 = 1004;
     const ErrorEventNotExist: u64 = 1005;
     const ErrorSigAlreadyExists: u64 = 1006;
+
+    #[data_struct]
+    /// EventStore
+    struct EventStore has key, copy, drop {
+        events: vector<Event>
+    }
 
     #[data_struct]
     /// Event
@@ -214,10 +217,10 @@ module nip::event {
         assert!(option::is_none(&sig), ErrorSigAlreadyExists);
 
         // decode signature with hex
-        let sig_to_attach = hex::decode(&string::into_bytes(signature));
+        let sig_to_update = hex::decode(&string::into_bytes(signature));
 
         // check the signature
-        check_signature(id, pubkey, sig_to_attach);
+        check_signature(id, pubkey, sig_to_update);
 
         // handle a range of different kinds of an Event
         if (kind == EVENT_KIND_USER_METADATA) {
@@ -233,8 +236,8 @@ module nip::event {
             };
         };
 
-        // update the signature of the sig field of the pre event object to form the event object
-        object::upsert_field(pre_event_object, SIG, option::some<vector<u8>>(sig_to_attach));
+        // update the signature of the sig field of the pre event to form the event
+        option::fill<vector<u8>>(&mut pre_event.sig, sig_to_update);
 
         // emit a move event nofitication
         let move_event = NostrEventUpdatedEvent {
@@ -315,78 +318,6 @@ module nip::event {
     /// Entry function to save an Event
     public entry fun save_event_entry(x_only_public_key: String, created_at: u64, kind: u16, tags: vector<vector<String>>, content: String, signature: String) {
         let _event_json = save_event(x_only_public_key, created_at, kind, tags, content, signature);
-    }
-
-    /// Save an Event with plaintext. Do not check integrity of created_at, kind, tags and content with id.
-    public fun save_event_plaintext(id_encoded: String, x_only_public_key: String, created_at: u64, kind: u16, tags: vector<vector<String>>, content: String, signature: String): vector<u8> {
-        // check id length
-        assert!(string::length(&id_encoded) == 64, ErrorMalformedId);
-
-        // check public key length
-        assert!(string::length(&x_only_public_key) == 64, ErrorMalformedPublicKey);
-
-        // check signature length
-        assert!(string::length(&signature) == 128, ErrorMalformedSignature);
-
-        // get the hex decoded id bytes
-        let id = hex::decode(&string::into_bytes(id_encoded));
-
-        // get the hex decoded public key bytes
-        let pubkey = hex::decode(&string::into_bytes(x_only_public_key));
-
-        // get the hex decoded signature bytes
-        let sig = hex::decode(&string::into_bytes(signature));
-
-        // check the signature
-        check_signature(id, pubkey, sig);
-
-        // derive a rooch address
-        let rooch_address = inner::derive_rooch_address(pubkey);
-
-        // handle a range of different kinds of an Event
-        if (kind == EVENT_KIND_USER_METADATA) {
-            // check the content integrity
-            let content_bytes = string::bytes(&content);
-            let _ = json::from_json<UserMetadata>(*content_bytes);
-            // clear past user metadata events from the user with the same rooch address from the public key
-            let event_object_id = object::account_named_object_id<Event>(rooch_address);
-            if (object::exists_object_with_type<Event>(event_object_id)) {
-                let event_object = object::take_object_extend<Event>(event_object_id);
-                let event = object::remove(event_object);
-                drop_event(event);
-            };
-        };
-
-        // save the event to the rooch address mapped to the public key
-        let event = Event {
-            id,
-            pubkey,
-            created_at,
-            kind,
-            tags,
-            content,
-            sig: option::some<vector<u8>>(sig)
-        };
-        let event_object = object::new_account_named_object<Event>(rooch_address, event);
-
-        // emit a move event nofitication
-        let event_object_id = object::id(&event_object);
-        let move_event = NostrEventCreatedEvent {
-            id: event_object_id
-        };
-        event::emit(move_event);
-
-        // transfer event object to the rooch address
-        object::transfer_extend(event_object, rooch_address);
-
-        // return the event object as JSON
-        let event_json = json::to_json<Event>(&event);
-        event_json
-    }
-
-    /// Entry function to save an Event with plaintext
-    public entry fun save_event_plaintext_entry(id: String, x_only_public_key: String, created_at: u64, kind: u16, tags: vector<vector<String>>, content: String, signature: String) {
-        let _event_json = save_event_plaintext(id, x_only_public_key, created_at, kind, tags, content, signature);
     }
 
     /// drop an event
