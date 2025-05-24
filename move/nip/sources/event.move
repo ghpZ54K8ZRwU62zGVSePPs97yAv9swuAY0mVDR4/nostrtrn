@@ -34,7 +34,7 @@ module nip::event {
     const ErrorMalformedPublicKey: u64 = 1002;
     const ErrorUtf8Encoding: u64 = 1003;
     const ErrorMalformedSignature: u64 = 1004;
-    const ErrorEventNotExist: u64 = 1005;
+    const ErrorEventStoreNotExist: u64 = 1005;
     const ErrorSigAlreadyExists: u64 = 1006;
 
     #[data_struct]
@@ -45,7 +45,7 @@ module nip::event {
 
     #[data_struct]
     /// Event
-    struct Event has key, copy, drop {
+    struct Event has key, store, copy, drop {
         id: vector<u8>, // 32-bytes lowercase hex-encoded sha256 of the serialized event data
         pubkey: vector<u8>, // 32-bytes lowercase hex-encoded public key of the event creator
         created_at: u64, // unix timestamp in seconds
@@ -64,6 +64,12 @@ module nip::event {
     #[data_struct]
     /// Event update notification for Move events
     struct NostrEventUpdatedEvent has copy, drop {
+        id: ObjectID
+    }
+
+    #[data_struct]
+    /// Event save notification for Move events
+    struct NostrEventSavedEvent has copy, drop {
         id: ObjectID
     }
 
@@ -151,8 +157,8 @@ module nip::event {
         id
     }
 
-    /// Create a pre Event
-    public fun create_pre_event(x_only_public_key: String, kind: u16, tags: vector<vector<String>>, content: String) {
+    /// Create an Event for signing
+    public fun create_event(x_only_public_key: String, kind: u16, tags: vector<vector<String>>, content: String): vector<u8> {
         // get now timestamp by seconds
         let created_at = timestamp::now_seconds();
 
@@ -165,62 +171,77 @@ module nip::event {
         // derive a rooch address
         let rooch_address = inner::derive_rooch_address(pubkey);
 
-        // save the pre event to the rooch address mapped to the public key
-        let pre_event = Event {
+        // init an empty signature
+        let sig = option::none<vector<u8>>();
+
+        // save the event for signing to the rooch address mapped to the public key
+        let event = Event {
             id,
             pubkey,
             created_at,
             kind,
             tags,
             content,
-            sig: option::none<vector<u8>>(),
+            sig,
         };
-        let pre_event_object = object::new_account_named_object<Event>(rooch_address, pre_event);
+        // borrow event store
+        let event_store = borrow_mut_event_store(rooch_address);
+        // borrow inner mutable events
+        let events = borrow_mut_events(event_store);
+        // get the event for signing pushed to the event store's events
+        vector::push_back<Event>(events, event);
 
         // emit a move event nofitication
-        let pre_event_object_id = object::id(&pre_event_object);
-        let move_pre_event = NostrEventCreatedEvent {
-            id: pre_event_object_id
+        let event_store_object_id = event_store_object_id(rooch_address);
+        let move_event = NostrEventCreatedEvent {
+            id: event_store_object_id
         };
-        event::emit(move_pre_event);
+        event::emit(move_event);
 
-        // transfer pre event object to the rooch address
-        object::transfer_extend(pre_event_object, rooch_address);
+        // return the event object as JSON
+        let event_json = json::to_json<Event>(&event);
+        event_json
     }
 
-    /// Entry function to create a pre Event
-    public entry fun create_pre_event_entry(x_only_public_key: String, kind: u16, tags: vector<vector<String>>, content: String) {
-        create_pre_event(x_only_public_key, kind, tags, content);
+    /// Entry function to create an Event for signing
+    public entry fun create_event_entry(x_only_public_key: String, kind: u16, tags: vector<vector<String>>, content: String) {
+        let _event_json = create_event(x_only_public_key, kind, tags, content);
     }
 
-    /// Create an Event
-    public fun create_event(signer: &signer, signature: String) {
+    /// Update a signature under the sig field of an Event
+    public fun update_event_signature(signer: &signer, signature: String): vector<u8> {
         // get the signer's rooch address
         let rooch_address = signer::address_of(signer);
 
-        // get the pre event object id from the address
-        let pre_event_object_id = object::account_named_object_id<Event>(rooch_address);
+        // get the event store object id from the address
+        let event_store_object_id = event_store_object_id(rooch_address);
 
-        // check the pre event object id if it exists
-        assert!(object::exists_object_with_type<Event>(pre_event_object_id), ErrorEventNotExist);
+        // check the event store object id if it exists
+        assert!(object::exists_object_with_type<EventStore>(event_store_object_id), ErrorEventStoreNotExist);
 
-        // take the pre event object from the object store
-        let pre_event_object = object::borrow_mut_object_extend<Event>(pre_event_object_id);
+        // borrow event store from the event store object id
+        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
 
-        // borrow the pre event
-        let pre_event = object::borrow_mut<Event>(pre_event_object);
+        // borrow inner mutable events
+        let events = borrow_mut_events(event_store);
+
+        // get the last element of event
+        let last_event_index = vector::length(events) - 1;
+
+        // get the signature of the last event updated
+        let event = vector::borrow_mut(events, last_event_index);
 
         // flatten the elements
-        let (id, pubkey, _created_at, kind, _tags, content, sig) = unpack_event(*pre_event);
+        let (id, pubkey, _created_at, kind, _tags, content, sig) = unpack_event(*event);
 
         // avoid overide signature
         assert!(option::is_none(&sig), ErrorSigAlreadyExists);
 
         // decode signature with hex
-        let sig_to_update = hex::decode(&string::into_bytes(signature));
+        let update_sig = hex::decode(&string::into_bytes(signature));
 
         // check the signature
-        check_signature(id, pubkey, sig_to_update);
+        check_signature(id, pubkey, update_sig);
 
         // handle a range of different kinds of an Event
         if (kind == EVENT_KIND_USER_METADATA) {
@@ -236,19 +257,22 @@ module nip::event {
             };
         };
 
-        // update the signature of the sig field of the pre event to form the event
-        option::fill<vector<u8>>(&mut pre_event.sig, sig_to_update);
+        // update the signature of the sig field of the event
+        option::fill<vector<u8>>(&mut event.sig, update_sig);
 
         // emit a move event nofitication
         let move_event = NostrEventUpdatedEvent {
-            id: pre_event_object_id
+            id: event_store_object_id
         };
         event::emit(move_event);
+
+        // return the signature updated
+        update_sig
     }
 
-    /// Entry function to create an Event
-    public entry fun create_event_entry(signer: &signer, signature: String) {
-        create_event(signer, signature);
+    /// Entry function to update a signature under sig field of an Event
+    public entry fun update_event_signature_entry(signer: &signer, signature: String) {
+        let _update_sig = update_event_signature(signer, signature);
     }
 
     /// Save an Event
@@ -266,10 +290,10 @@ module nip::event {
         let pubkey = hex::decode(&string::into_bytes(x_only_public_key));
 
         // get the hex decoded signature bytes
-        let sig = hex::decode(&string::into_bytes(signature));
+        let check_sig = hex::decode(&string::into_bytes(signature));
 
         // check the signature
-        check_signature(id, pubkey, sig);
+        check_signature(id, pubkey, check_sig);
 
         // derive a rooch address
         let rooch_address = inner::derive_rooch_address(pubkey);
@@ -288,6 +312,9 @@ module nip::event {
             };
         };
 
+        // pass check sig as option to form sig option
+        let sig = option::some<vector<u8>>(check_sig);
+
         // save the event to the rooch address mapped to the public key
         let event = Event {
             id,
@@ -296,19 +323,21 @@ module nip::event {
             kind,
             tags,
             content,
-            sig: option::some<vector<u8>>(sig)
+            sig
         };
-        let event_object = object::new_account_named_object<Event>(rooch_address, event);
+        // borrow event store
+        let event_store = borrow_mut_event_store(rooch_address);
+        // borrow inner mutable events
+        let events = borrow_mut_events(event_store);
+        // get the event pushed to the event store's events
+        vector::push_back<Event>(events, event);
 
         // emit a move event nofitication
-        let event_object_id = object::id(&event_object);
-        let move_event = NostrEventCreatedEvent {
-            id: event_object_id
+        let event_store_object_id = event_store_object_id(rooch_address);
+        let move_event = NostrEventSavedEvent {
+            id: event_store_object_id
         };
         event::emit(move_event);
-
-        // transfer event object to the rooch address
-        object::transfer_extend(event_object, rooch_address);
 
         // return the event object as JSON
         let event_json = json::to_json<Event>(&event);
@@ -330,7 +359,61 @@ module nip::event {
         (id, pubkey, created_at, kind, tags, content, sig)
     }
 
-    /// getter functions
+    fun event_store_object_id(rooch_address: address): ObjectID {
+        let event_store_object_id = object::account_named_object_id<EventStore>(rooch_address);
+        event_store_object_id
+    }
+
+    fun borrow_mut_event_store(rooch_address: address): &mut EventStore {
+        // get the event store object id from the address
+        let event_store_object_id = event_store_object_id(rooch_address);
+
+        // check the event store object id if it exists, if not, create an empty one
+        if (!object::exists_object_with_type<EventStore>(event_store_object_id)) {
+            return init_event_store(rooch_address)
+        };
+
+        // borrow the event store from the event store object id
+        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
+
+        event_store
+    }
+
+    fun borrow_mut_event_store_from_object_id(event_store_object_id: ObjectID): &mut EventStore {
+        // take the event store object from the object store
+        let event_store_object = object::borrow_mut_object_extend<EventStore>(event_store_object_id);
+
+        // borrow the event store
+        let event_store = object::borrow_mut<EventStore>(event_store_object);
+
+        event_store
+    }
+
+    fun init_event_store(rooch_address: address): &mut EventStore {
+        // create an event store object and transfer to the rooch address
+        let empty_event_store = empty_event_store();
+        let event_store_object = object::new_account_named_object<EventStore>(rooch_address, empty_event_store);
+        object::transfer_extend(event_store_object, rooch_address);
+        // retrieve the mutable event store from the rooch address
+        let event_store_object_id = event_store_object_id(rooch_address);
+        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
+
+        event_store
+    }
+
+    fun empty_event_store(): EventStore {
+        let event_store = EventStore {
+            events: vector::empty<Event>()
+        };
+
+        event_store
+    }
+
+    fun borrow_mut_events(event_store: &mut EventStore): &mut vector<Event> {
+        &mut event_store.events
+    }
+
+    /// getter functions for event
 
     public fun id(event: &Event): vector<u8> {
         event.id
@@ -358,5 +441,11 @@ module nip::event {
 
     public fun sig(event: &Event): Option<vector<u8>> {
         event.sig
+    }
+
+    /// getter functions for event store
+
+    public fun events(event_store: &EventStore): vector<Event> {
+        event_store.events
     }
 }
