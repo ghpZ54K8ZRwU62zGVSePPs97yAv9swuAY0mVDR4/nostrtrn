@@ -36,6 +36,7 @@ module nip::event {
     const ErrorMalformedSignature: u64 = 1004;
     const ErrorEventStoreNotExist: u64 = 1005;
     const ErrorSigAlreadyExists: u64 = 1006;
+    const ErrorInvalidUserMetadata: u64 = 1007;
 
     #[data_struct]
     /// EventStore
@@ -143,6 +144,48 @@ module nip::event {
         ), ErrorSignatureValidationFailure);
     }
 
+    /// Check the referenced user metadata from content with UserMetadata struct
+    fun check_user_metadata(content: String) {
+        // check the content integrity
+        let content_json = json::to_json<String>(&content);
+        // some bits are stripped for verification
+        let dq = inner::doublequote();
+        vector::remove_value(&mut content_json, &dq);
+        vector::reverse(&mut content_json);
+        vector::remove_value(&mut content_json, &dq);
+        vector::reverse(&mut content_json);
+        let bs = inner::backslash();
+        while (vector::contains(&content_json, &bs)) {
+            vector::remove_value(&mut content_json, &bs);
+        };
+        let user_metadata_option = json::from_json_option<UserMetadata>(content_json);
+        assert!(option::is_some(&user_metadata_option), ErrorInvalidUserMetadata);
+    }
+
+    // Clean the old user metadata when there is a new one from event store object id
+    fun clean_user_metadata(event_store_object_id: ObjectID) {
+        // borrow event store from the event store object id
+        let event_store = borrow_event_store_from_object_id(event_store_object_id);
+        // borrow inner events
+        let events = borrow_events(event_store);
+        // find the index of the user metadata event
+        let (user_metatada_exists, index) = vector::find<Event>(events, |event_ref| {
+            let event: &Event = event_ref;
+            event.kind == EVENT_KIND_USER_METADATA
+        });
+        // remove the first occurrence of the user metadata if there's an old user metadata
+        if (user_metatada_exists) {
+            // borrow mutable event store from the event store object id
+            let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
+            // borrow inner mutable events
+            let events_mut = borrow_mut_events(event_store_mut);
+            // use remove since the ordering isn't priority
+            let removed_event = vector::remove<Event>(events_mut, index);
+            // drop the removed event
+            drop_event(removed_event);
+        };
+    }
+
     /// Create an Event id
     fun create_event_id(pubkey: String, created_at: u64, kind: u16, tags: vector<vector<String>>, content: String): vector<u8> {
         // serialize input to bytes for an Event id
@@ -176,42 +219,11 @@ module nip::event {
 
         // handle a range of different kinds of an Event
         if (kind == EVENT_KIND_USER_METADATA) {
-            // check the content integrity
-            let content_json = json::to_json<String>(&content);
-            // some bits are stripped for verification
-            let dq = inner::doublequote();
-            vector::remove_value(&mut content_json, &dq);
-            vector::reverse(&mut content_json);
-            vector::remove_value(&mut content_json, &dq);
-            vector::reverse(&mut content_json);
-            let bs = inner::backslash();
-            while (vector::contains(&content_json, &bs)) {
-                vector::remove_value(&mut content_json, &bs);
-            };
-            let _ = json::from_json<UserMetadata>(content_json);
+            check_user_metadata(content);
             // clear past user metadata events from the user with the same rooch address from the public key
             let event_store_object_id = event_store_object_id(rooch_address);
             if (object::exists_object_with_type<EventStore>(event_store_object_id)) {
-                // borrow event store from the event store object id
-                let event_store = borrow_event_store_from_object_id(event_store_object_id);
-                // borrow inner events
-                let events = borrow_events(event_store);
-                // find the index of the user metadata event
-                let (user_metatada_exists, index) = vector::find<Event>(events, |event_ref| {
-                    let event: &Event = event_ref;
-                    event.kind == EVENT_KIND_USER_METADATA
-                });
-                // remove the first occurrence of the user metadata if there's an old user metadata
-                if (user_metatada_exists) {
-                    // borrow mutable event store from the event store object id
-                    let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
-                    // borrow inner mutable events
-                    let events_mut = borrow_mut_events(event_store_mut);
-                    // use remove since the ordering isn't priority
-                    let removed_event = vector::remove<Event>(events_mut, index);
-                    // drop the removed event
-                    drop_event(removed_event);
-                };
+                clean_user_metadata(event_store_object_id);
             };
         };
 
@@ -330,42 +342,11 @@ module nip::event {
 
         // handle a range of different kinds of an Event
         if (kind == EVENT_KIND_USER_METADATA) {
-            // check the content integrity
-            let content_json = json::to_json<String>(&content);
-            // some bits are stripped for verification
-            let dq = inner::doublequote();
-            vector::remove_value(&mut content_json, &dq);
-            vector::reverse(&mut content_json);
-            vector::remove_value(&mut content_json, &dq);
-            vector::reverse(&mut content_json);
-            let bs = inner::backslash();
-            while (vector::contains(&content_json, &bs)) {
-                vector::remove_value(&mut content_json, &bs);
-            };
-            let _ = json::from_json<UserMetadata>(content_json);
+            check_user_metadata(content);
             // clear past user metadata events from the user with the same rooch address from the public key
             let event_store_object_id = event_store_object_id(rooch_address);
             if (object::exists_object_with_type<EventStore>(event_store_object_id)) {
-                // borrow event store from the event store object id
-                let event_store = borrow_event_store_from_object_id(event_store_object_id);
-                // borrow inner events
-                let events = borrow_events(event_store);
-                // find the index of the user metadata event
-                let (user_metatada_exists, index) = vector::find<Event>(events, |event_ref| {
-                    let event: &Event = event_ref;
-                    event.kind == EVENT_KIND_USER_METADATA
-                });
-                // remove the first occurrence of the user metadata if there's an old user metadata
-                if (user_metatada_exists) {
-                    // borrow mutable event store from the event store object id
-                    let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
-                    // borrow inner mutable events
-                    let events_mut = borrow_mut_events(event_store_mut);
-                    // use remove since the ordering isn't priority
-                    let removed_event = vector::remove<Event>(events_mut, index);
-                    // drop the removed event
-                    drop_event(removed_event);
-                };
+                clean_user_metadata(event_store_object_id);
             };
         };
 
