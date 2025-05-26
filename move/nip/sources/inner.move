@@ -29,6 +29,10 @@ module nip::inner {
     // Hex literals for kind max value
     const KIND_UPPER_VALUE: u16 = 0xFFFF;
 
+    // Content filter in NIP-01
+    const DOUBLEQUOTE: u8 = 34; // 0x22, \", Double Quote
+    const BACKSLASH: u8 = 92; // 0x5C, \\, Backslash
+
     // Error codes starting from 1000
     const ErrorMalformedOtherEventId: u64 = 1000;
     const ErrorMalformedPublicKey: u64 = 1001;
@@ -96,6 +100,14 @@ module nip::inner {
 
     public fun colon_string(): String {
         string::utf8(COLON)
+    }
+
+    public fun doublequote(): u8 {
+        DOUBLEQUOTE
+    }
+
+    public fun backslash(): u8 {
+        BACKSLASH
     }
 
     /// derive a bitcoin taproot address from a x-only public key

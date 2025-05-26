@@ -174,6 +174,47 @@ module nip::event {
         // init an empty signature
         let sig = option::none<vector<u8>>();
 
+        // handle a range of different kinds of an Event
+        if (kind == EVENT_KIND_USER_METADATA) {
+            // check the content integrity
+            let content_json = json::to_json<String>(&content);
+            // some bits are stripped for verification
+            let dq = inner::doublequote();
+            vector::remove_value(&mut content_json, &dq);
+            vector::reverse(&mut content_json);
+            vector::remove_value(&mut content_json, &dq);
+            vector::reverse(&mut content_json);
+            let bs = inner::backslash();
+            while (vector::contains(&content_json, &bs)) {
+                vector::remove_value(&mut content_json, &bs);
+            };
+            let _ = json::from_json<UserMetadata>(content_json);
+            // clear past user metadata events from the user with the same rooch address from the public key
+            let event_store_object_id = event_store_object_id(rooch_address);
+            if (object::exists_object_with_type<EventStore>(event_store_object_id)) {
+                // borrow event store from the event store object id
+                let event_store = borrow_event_store_from_object_id(event_store_object_id);
+                // borrow inner events
+                let events = borrow_events(event_store);
+                // find the index of the user metadata event
+                let (user_metatada_exists, index) = vector::find<Event>(events, |event_ref| {
+                    let event: &Event = event_ref;
+                    event.kind == EVENT_KIND_USER_METADATA
+                });
+                // remove the first occurrence of the user metadata if there's an old user metadata
+                if (user_metatada_exists) {
+                    // borrow mutable event store from the event store object id
+                    let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
+                    // borrow inner mutable events
+                    let events_mut = borrow_mut_events(event_store_mut);
+                    // use remove since the ordering isn't priority
+                    let removed_event = vector::remove<Event>(events_mut, index);
+                    // drop the removed event
+                    drop_event(removed_event);
+                };
+            };
+        };
+
         // save the event for signing to the rooch address mapped to the public key
         let event = Event {
             id,
@@ -184,12 +225,12 @@ module nip::event {
             content,
             sig,
         };
-        // borrow event store
-        let event_store = borrow_mut_event_store(rooch_address);
+        // borrow mutable event store
+        let event_store_mut = borrow_mut_event_store(rooch_address);
         // borrow inner mutable events
-        let events = borrow_mut_events(event_store);
+        let events_mut = borrow_mut_events(event_store_mut);
         // get the event for signing pushed to the event store's events
-        vector::push_back<Event>(events, event);
+        vector::push_back<Event>(events_mut, event);
 
         // emit a move event nofitication
         let event_store_object_id = event_store_object_id(rooch_address);
@@ -219,20 +260,20 @@ module nip::event {
         // check the event store object id if it exists
         assert!(object::exists_object_with_type<EventStore>(event_store_object_id), ErrorEventStoreNotExist);
 
-        // borrow event store from the event store object id
-        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
+        // borrow mutable event store from the event store object id
+        let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
 
         // borrow inner mutable events
-        let events = borrow_mut_events(event_store);
+        let events_mut = borrow_mut_events(event_store_mut);
 
         // get the last element of event
-        let last_event_index = vector::length(events) - 1;
+        let last_event_index = vector::length(events_mut) - 1;
 
         // get the signature of the last event updated
-        let event = vector::borrow_mut(events, last_event_index);
+        let event_mut = vector::borrow_mut(events_mut, last_event_index);
 
         // flatten the elements
-        let (id, pubkey, _created_at, kind, _tags, content, sig) = unpack_event(*event);
+        let (id, pubkey, _created_at, _kind, _tags, _content, sig) = unpack_event(*event_mut);
 
         // avoid overide signature
         assert!(option::is_none(&sig), ErrorSigAlreadyExists);
@@ -243,22 +284,8 @@ module nip::event {
         // check the signature
         check_signature(id, pubkey, update_sig);
 
-        // handle a range of different kinds of an Event
-        if (kind == EVENT_KIND_USER_METADATA) {
-            // check the content integrity
-            let content_bytes = string::bytes(&content);
-            let _ = json::from_json<UserMetadata>(*content_bytes);
-            // clear past user metadata events from the user with the same rooch address from the public key
-            let event_object_id = object::account_named_object_id<Event>(rooch_address);
-            if (object::exists_object_with_type<Event>(event_object_id)) {
-                let event_object = object::take_object_extend<Event>(event_object_id);
-                let event = object::remove(event_object);
-                drop_event(event);
-            };
-        };
-
         // update the signature of the sig field of the event
-        option::fill<vector<u8>>(&mut event.sig, update_sig);
+        option::fill<vector<u8>>(&mut event_mut.sig, update_sig);
 
         // emit a move event nofitication
         let move_event = NostrEventUpdatedEvent {
@@ -298,22 +325,49 @@ module nip::event {
         // derive a rooch address
         let rooch_address = inner::derive_rooch_address(pubkey);
 
+        // pass check sig as option to form sig option
+        let sig = option::some<vector<u8>>(check_sig);
+
         // handle a range of different kinds of an Event
         if (kind == EVENT_KIND_USER_METADATA) {
             // check the content integrity
-            let content_bytes = string::bytes(&content);
-            let _ = json::from_json<UserMetadata>(*content_bytes);
+            let content_json = json::to_json<String>(&content);
+            // some bits are stripped for verification
+            let dq = inner::doublequote();
+            vector::remove_value(&mut content_json, &dq);
+            vector::reverse(&mut content_json);
+            vector::remove_value(&mut content_json, &dq);
+            vector::reverse(&mut content_json);
+            let bs = inner::backslash();
+            while (vector::contains(&content_json, &bs)) {
+                vector::remove_value(&mut content_json, &bs);
+            };
+            let _ = json::from_json<UserMetadata>(content_json);
             // clear past user metadata events from the user with the same rooch address from the public key
-            let event_object_id = object::account_named_object_id<Event>(rooch_address);
-            if (object::exists_object_with_type<Event>(event_object_id)) {
-                let event_object = object::take_object_extend<Event>(event_object_id);
-                let event = object::remove(event_object);
-                drop_event(event);
+            let event_store_object_id = event_store_object_id(rooch_address);
+            if (object::exists_object_with_type<EventStore>(event_store_object_id)) {
+                // borrow event store from the event store object id
+                let event_store = borrow_event_store_from_object_id(event_store_object_id);
+                // borrow inner events
+                let events = borrow_events(event_store);
+                // find the index of the user metadata event
+                let (user_metatada_exists, index) = vector::find<Event>(events, |event_ref| {
+                    let event: &Event = event_ref;
+                    event.kind == EVENT_KIND_USER_METADATA
+                });
+                // remove the first occurrence of the user metadata if there's an old user metadata
+                if (user_metatada_exists) {
+                    // borrow mutable event store from the event store object id
+                    let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
+                    // borrow inner mutable events
+                    let events_mut = borrow_mut_events(event_store_mut);
+                    // use remove since the ordering isn't priority
+                    let removed_event = vector::remove<Event>(events_mut, index);
+                    // drop the removed event
+                    drop_event(removed_event);
+                };
             };
         };
-
-        // pass check sig as option to form sig option
-        let sig = option::some<vector<u8>>(check_sig);
 
         // save the event to the rooch address mapped to the public key
         let event = Event {
@@ -325,12 +379,12 @@ module nip::event {
             content,
             sig
         };
-        // borrow event store
-        let event_store = borrow_mut_event_store(rooch_address);
+        // borrow mutable event store
+        let event_store_mut = borrow_mut_event_store(rooch_address);
         // borrow inner mutable events
-        let events = borrow_mut_events(event_store);
+        let events_mut = borrow_mut_events(event_store_mut);
         // get the event pushed to the event store's events
-        vector::push_back<Event>(events, event);
+        vector::push_back<Event>(events_mut, event);
 
         // emit a move event nofitication
         let event_store_object_id = event_store_object_id(rooch_address);
@@ -373,20 +427,30 @@ module nip::event {
             return init_event_store(rooch_address)
         };
 
-        // borrow the event store from the event store object id
-        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
+        // borrow the mutable event store from the event store object id
+        let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
+
+        event_store_mut
+    }
+
+    fun borrow_event_store_from_object_id(event_store_object_id: ObjectID): &EventStore {
+        // borrow the event store object from the object store
+        let event_store_object = object::borrow_object<EventStore>(event_store_object_id);
+
+        // borrow the event store
+        let event_store = object::borrow<EventStore>(event_store_object);
 
         event_store
     }
 
     fun borrow_mut_event_store_from_object_id(event_store_object_id: ObjectID): &mut EventStore {
-        // take the event store object from the object store
-        let event_store_object = object::borrow_mut_object_extend<EventStore>(event_store_object_id);
+        // borrow the mutable event store object from the object store
+        let event_store_object_mut = object::borrow_mut_object_extend<EventStore>(event_store_object_id);
 
-        // borrow the event store
-        let event_store = object::borrow_mut<EventStore>(event_store_object);
+        // borrow the mutable event store
+        let event_store_mut = object::borrow_mut<EventStore>(event_store_object_mut);
 
-        event_store
+        event_store_mut
     }
 
     fun init_event_store(rooch_address: address): &mut EventStore {
@@ -396,9 +460,9 @@ module nip::event {
         object::transfer_extend(event_store_object, rooch_address);
         // retrieve the mutable event store from the rooch address
         let event_store_object_id = event_store_object_id(rooch_address);
-        let event_store = borrow_mut_event_store_from_object_id(event_store_object_id);
+        let event_store_mut = borrow_mut_event_store_from_object_id(event_store_object_id);
 
-        event_store
+        event_store_mut
     }
 
     fun empty_event_store(): EventStore {
@@ -409,8 +473,12 @@ module nip::event {
         event_store
     }
 
-    fun borrow_mut_events(event_store: &mut EventStore): &mut vector<Event> {
-        &mut event_store.events
+    fun borrow_events(event_store: &EventStore): &vector<Event> {
+        &event_store.events
+    }
+
+    fun borrow_mut_events(event_store_mut: &mut EventStore): &mut vector<Event> {
+        &mut event_store_mut.events
     }
 
     /// getter functions for event
