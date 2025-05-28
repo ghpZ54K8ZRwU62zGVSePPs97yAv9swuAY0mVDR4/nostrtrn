@@ -8,7 +8,7 @@ Introduce Nostrtrn, a Nostr bridge on Rooch Network. It bridges Nostr to Rooch N
 
 ## Triangle
 
-### Relationship with Nostr
+### Relationship With Nostr
 
 #### As On-chain Event Converter
 
