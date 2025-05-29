@@ -24,7 +24,9 @@ Low priority:
 
 - [ ] NIP-03 - provides verification method of OpenTimestamps proof OTS file data in base64 encoded format in content fields of Nostr events on-chain. Need to support OpenTimestamps for Bitcoin attestations on Rooch.
 - [ ] NIP-13 - calculates PoW text notes of Nostr events and validate it on-chain.
+- [ ] NIP-53 - verification of the proofs of the p tags in live events using hex-encoded signed SHA-256 of a tags from event owners on-chain.
 - [ ] NIP-60 - supports cashu-based wallet and provides accessibility to proof validation of unspent proofs in token events using users' private keys from wallet event to stay in the newest state.
+- [ ] NIP-61 - verify NUT-12 (DLEQ proofs) in an event received cashu zaps on-chain from an observer blockchain client.
 
 ## License
 
