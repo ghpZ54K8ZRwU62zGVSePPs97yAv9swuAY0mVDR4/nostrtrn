@@ -1,12 +1,16 @@
-# Nip
+# Nips
 
-NIP stands for Nostr Implementation Possibilities. NIP is a collection of Move smart contracts for the context of Nostr.
+NIPs stand for Nostr Implementation Possibilities. NIPs under this project are collections of Move smart contracts for the context of Nostr.
 
 ## On-chain Verification
 
-NIP smart contracts verify integrity and authenticity of the Nostr events on-chain. It provides verifications on-chain from Move smart contract supported verification schemes.
+NIPs' smart contracts in Move verify integrity and authenticity of the Nostr events on-chain. It provides verifications on-chain from Move smart contract supported verification schemes.
 
 ### Protocol Implementation
+
+NIPs under this project implement Nostr protocols in Move programming language.
+
+The implementation goals of this project are defined as below.
 
 Implemented:
 
@@ -28,28 +32,10 @@ Low priority:
 - [ ] NIP-60 - supports cashu-based wallet and provides accessibility to proof validation of unspent proofs in token events using users' private keys from wallet event to stay in the newest state.
 - [ ] NIP-61 - verify NUT-12 (DLEQ proofs) in an event received cashu zaps on-chain from an observer blockchain client.
 
-## License
+### Contract Addresses
 
-This work, under `move/nip`, of nostrtrn, is dual-licensed under version 3 (or any later version) of the GNU Affero General Public License and Apache License, Version 2.0.
+Move smart contracts of NIPs of this project are deployed to Rooch Network. The deployed contract addresses of each NIP align with Rooch Network's env alias, i.e. local, dev, test, main, which can be found in the values of `[addresses]` in each NIP's `Move.toml` file.
 
-Both licenses should be complied.
+## Related Links
 
-One may obtain a copy of the Apache License, Version 2.0 from this URL:
-
-https://github.com/rooch-network/rooch/blob/main/LICENSE.
-
-One may obtain a copy of the version 3 (or any later version) of the GNU Affero General Public License from the root of this project:
-
-[LICENSE](../../LICENSE).
-
-When deriviate works from this repository, add below licensings of the SPDX license identifier:
-
-```move
-// Copyright (C) 2025  ZHANG, HENGMING
-// SPDX-License-Identifier: AGPL-3.0-or-later
-
-// Copyright (c) RoochNetwork
-// SPDX-License-Identifier: Apache-2.0
-```
-
-Above equals to `(AGPL-3.0-or-later AND Apache-2.0)` syntax of a SPDX-License-Identifier.
+- NIPs: https://github.com/nostr-protocol/nips.
