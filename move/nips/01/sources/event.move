@@ -6,11 +6,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-/// Module: nip
+/// Module: 01
 /// Name: event
 /// Description: Implements NIP-01 event structure
 */
-module nip::event {
+module 01::event {
     use std::vector;
     use std::string::{Self, String};
     use std::option::{Self, Option};
