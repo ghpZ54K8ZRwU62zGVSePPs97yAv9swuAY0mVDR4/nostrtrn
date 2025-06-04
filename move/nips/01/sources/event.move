@@ -23,7 +23,7 @@ module 01::event {
     use moveos_std::json;
     use moveos_std::string_utils;
     use rooch_framework::ecdsa_k1;
-    use nip::inner;
+    use 01::inner;
 
     // Kind of the event
     const EVENT_KIND_USER_METADATA: u16 = 0;
