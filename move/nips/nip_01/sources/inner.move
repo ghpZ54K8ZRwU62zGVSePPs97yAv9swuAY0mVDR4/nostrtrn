@@ -6,11 +6,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-/// Module: 01
+/// Module: nip_01
 /// Name: inner
 /// Description: Internal data structures
 */
-module 01::inner {
+module nip_01::inner {
     use std::vector;
     use std::string::{Self, String};
     use std::option::{Self, Option};

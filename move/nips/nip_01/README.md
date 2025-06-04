@@ -1,6 +1,6 @@
 # Basic Protocol Flow Description In Move
 
-`move/nips/01` under this project implements basic protocol flow description as described in `nostr-protocol/nips/01.md` in Move programming language.
+`move/nips/nip_01` under this project implements basic protocol flow description as described in `nostr-protocol/nips/01.md` in Move programming language.
 
 ## Related Links
 
@@ -8,7 +8,7 @@
 
 ## License
 
-This work, under `move/nip`, of nostrtrn, is dual-licensed under version 3 (or any later version) of the GNU Affero General Public License and Apache License, Version 2.0.
+This work, under `move/nips/nip_01`, of nostrtrn, is dual-licensed under version 3 (or any later version) of the GNU Affero General Public License and Apache License, Version 2.0.
 
 Both licenses should be complied.
 
