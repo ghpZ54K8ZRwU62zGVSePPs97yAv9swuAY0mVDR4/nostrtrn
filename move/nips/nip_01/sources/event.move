@@ -6,11 +6,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /*
-/// Module: 01
+/// Module: nip_01
 /// Name: event
 /// Description: Implements NIP-01 event structure
 */
-module 01::event {
+module nip_01::event {
     use std::vector;
     use std::string::{Self, String};
     use std::option::{Self, Option};
@@ -23,7 +23,7 @@ module 01::event {
     use moveos_std::json;
     use moveos_std::string_utils;
     use rooch_framework::ecdsa_k1;
-    use 01::inner;
+    use nip_01::inner;
 
     // Kind of the event
     const EVENT_KIND_USER_METADATA: u16 = 0;
