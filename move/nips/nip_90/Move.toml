@@ -1,0 +1,27 @@
+[package]
+name = "nip_90"
+version = "0.0.1"
+
+[dependencies]
+MoveStdlib = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/move-stdlib", rev = "main" }
+MoveosStdlib = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/moveos-stdlib", rev = "main" }
+RoochFramework = { git = "https://github.com/rooch-network/rooch.git", subdir = "frameworks/rooch-framework", rev = "main" }
+
+[addresses]
+std = "0x1"
+moveos_std = "0x2"
+rooch_framework = "0x3"
+# Smart contract addresses on each subnet of Rooch Network
+# nip_90 is equal to nip_90_local
+nip_90 = "_"
+nip_90_dev = "_"
+nip_90_test = "_"
+nip_90_main = "_"
+
+[dev-addresses]
+# Smart contract dev addresses on each subnet of Rooch Network
+# nip_90 is equal to nip_90_local
+nip_90 = "0x42"
+nip_90_dev = "0x43"
+nip_90_test = "0x44"
+nip_90_main = "0x45"
