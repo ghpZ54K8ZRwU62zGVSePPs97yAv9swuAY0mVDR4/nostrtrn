@@ -1,6 +1,6 @@
-# Basic Protocol Flow Description In Move
+# Events And Signatures In Move
 
-`move/nips/nip_01` under this project implements basic protocol flow description as described in `nostr-protocol/nips/01.md` in Move programming language.
+`move/nips/nip_01` under this project implements events and signatures as described in `nostr-protocol/nips/01.md` in Move programming language.
 
 ## Related Links
 
