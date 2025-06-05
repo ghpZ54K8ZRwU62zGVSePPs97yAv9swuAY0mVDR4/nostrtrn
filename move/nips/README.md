@@ -19,6 +19,7 @@ Implemented:
 High priority:
 
 - [ ] NIP-39 - bind Rooch DID document and on-chain identity to a Nostr user metadata event to confirm external identification with Rooch Network, e.g. `rooch:<address>`.
+- [ ] NIP-73 - link Nostr events live on Rooch Network with `rooch[:<rooch_chain_id>]:address[:<rooch_address>]` tags of the owner's Rooch address and `rooch[:<rooch_chain_id>]:tx[:<rooch_tx_id>]` tags of the Rooch transactions in the type of Nostr for indexers and inquirers.
 - [ ] NIP-90 - provide service providers of data vending machine the platform (Rooch DID document and Rooch Network) where they can fulfill the computed data on-chain and customers can have their data of a request persisted on-chain.
 
 Medium priority:

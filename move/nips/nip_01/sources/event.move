@@ -8,7 +8,7 @@
 /*
 /// Module: nip_01
 /// Name: event
-/// Description: Implements NIP-01 event structure
+/// Description: implements NIP-01 event structure
 */
 module nip_01::event {
     use std::vector;

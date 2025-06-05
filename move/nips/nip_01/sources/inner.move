@@ -8,7 +8,7 @@
 /*
 /// Module: nip_01
 /// Name: inner
-/// Description: Internal data structures
+/// Description: internal data structures
 */
 module nip_01::inner {
     use std::vector;
